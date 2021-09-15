@@ -1,3 +1,4 @@
+// Validation
 interface ValidationConfig {
   value: number | string;
   required?: boolean;
@@ -42,6 +43,99 @@ const validate = ({ value, required, minLength, maxLength, min, max }: Validatio
   return isValid;
 };
 
+// Store
+type ListenerFn = (items: Project[]) => void;
+
+class Store {
+  private static instance: Store;
+  private listeners: ListenerFn[] = [];
+  private projects: Project[] = [];
+
+  private constructor() {
+    Store.instance = this;
+  }
+
+  static getInstance() {
+    return (Store.instance) ? Store.instance : new Store();
+  }
+
+  addListener(listenerFn: ListenerFn) {
+    this.listeners.push(listenerFn);
+  }
+
+  addProject(project: Project) {
+    this.projects.push(project);
+
+    for (const listenerFn of this.listeners) {
+      listenerFn(this.projects.slice());
+    }
+  }
+}
+
+const store = Store.getInstance();
+
+// Projects
+enum ProjectStatus {
+  ACTIVE = 'active',
+  FINISHED = 'finished'
+}
+
+class Project {
+  constructor(public id: string,
+              public title: string,
+              public description: string,
+              public people: number,
+              public status: ProjectStatus) {
+  }
+}
+
+class ProjectList {
+  templateEl: HTMLTemplateElement;
+  hostEl: HTMLDivElement;
+  element: HTMLElement;
+  projectsListEl: HTMLUListElement;
+
+  projects: Project[] = [];
+
+  constructor(private type: ProjectStatus) {
+    this.templateEl = document.querySelector('#project-list')!;
+    this.hostEl = document.querySelector('#app')!;
+    this.element = document.importNode(this.templateEl.content, true).firstElementChild as HTMLElement;
+    this.element.id = `${this.type}-projects`;
+    this.projectsListEl = this.element.querySelector('ul')!;
+
+    store.addListener((projects: Project[]) => {
+      this.projects = projects.filter((project) => (project.status === this.type));
+      this.renderProjects();
+    });
+
+    this.renderContent();
+    this.attach();
+  }
+
+  private renderProjects() {
+    let html = '';
+
+    for (const project of this.projects) {
+      const listItemEl = document.createElement('li');
+      listItemEl.textContent = project.title;
+      html += listItemEl.outerHTML;
+    }
+
+    this.projectsListEl.innerHTML = html;
+  }
+
+  private renderContent() {
+    this.projectsListEl.id = `${this.type}-projects-list`;
+    this.element.querySelector('h2')!.textContent = `${this.type} projects`.toUpperCase();
+  }
+
+  private attach() {
+    this.hostEl.insertAdjacentElement('beforeend', this.element);
+  }
+}
+
+// User input
 const AutoBind = (
     _target: any,
     _methodName: string,
@@ -91,7 +185,6 @@ class ProjectInput {
       min: 1,
       max: 5
     })) {
-      this.element.reset();
       return [title, description, peopleCount];
     } else {
       alert('Invalid input!');
@@ -105,7 +198,15 @@ class ProjectInput {
     const userInputData = this.getUserInput();
 
     if (Array.isArray(userInputData)) {
-      console.log(userInputData)
+      const [title, description, peopleCount] = userInputData;
+      store.addProject(new Project(
+          Math.random().toString(),
+          title,
+          description,
+          peopleCount,
+          ProjectStatus.ACTIVE
+      ));
+      this.element.reset();
     }
   }
 
@@ -120,3 +221,5 @@ class ProjectInput {
 }
 
 new ProjectInput();
+new ProjectList(ProjectStatus.ACTIVE);
+new ProjectList(ProjectStatus.FINISHED);
