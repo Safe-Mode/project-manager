@@ -94,12 +94,16 @@ abstract class Component<T extends HTMLElement, U extends HTMLElement> {
     this.templateEl = document.querySelector(`#${tplId}`)!;
     this.hostEl = document.querySelector(`#${hostId}`)!;
     this.element = document.importNode(this.templateEl.content, true).firstElementChild as U;
-    this.element.id = `${type}-projects`;
+
+    if (type) {
+      this.element.id = `${type}-projects`;
+    }
 
     this.attach();
   }
 
   abstract configure(): void;
+  abstract renderContent(): void;
 
   protected attach() {
     this.hostEl.insertAdjacentElement(this.elPosition, this.element);
@@ -122,9 +126,28 @@ class Project {
   }
 }
 
+class ProjectItem extends Component<HTMLUListElement, HTMLLIElement> {
+  constructor(listId: string,
+              private project: Project) {
+    super('single-project', listId, 'beforeend');
+
+    this.configure();
+    this.renderContent();
+  }
+
+  configure() {
+    this.element.id = this.project.id;
+  }
+
+  renderContent() {
+    this.element.querySelector('h2')!.textContent = this.project.title;
+    this.element.querySelector('h3')!.textContent = this.project.people.toString();
+    this.element.querySelector('p')!.textContent = this.project.description;
+  }
+}
+
 class ProjectList extends Component<HTMLDivElement, HTMLElement> {
   projectsListEl: HTMLUListElement;
-
   projects: Project[] = [];
 
   constructor(private type: ProjectStatus) {
@@ -136,27 +159,24 @@ class ProjectList extends Component<HTMLDivElement, HTMLElement> {
   }
 
   configure() {
+    this.projectsListEl.id = `${this.type}-projects-list`;
+
     store.addListener((projects: Project[]) => {
       this.projects = projects.filter((project) => (project.status === this.type));
       this.renderProjects();
     });
   }
 
-  private renderProjects() {
-    let html = '';
-
-    for (const project of this.projects) {
-      const listItemEl = document.createElement('li');
-      listItemEl.textContent = project.title;
-      html += listItemEl.outerHTML;
-    }
-
-    this.projectsListEl.innerHTML = html;
+  renderContent() {
+    this.element.querySelector('h2')!.textContent = `${this.type} projects`.toUpperCase();
   }
 
-  private renderContent() {
-    this.projectsListEl.id = `${this.type}-projects-list`;
-    this.element.querySelector('h2')!.textContent = `${this.type} projects`.toUpperCase();
+  private renderProjects() {
+    this.projectsListEl.innerHTML = '';
+
+    for (const project of this.projects) {
+      new ProjectItem(this.projectsListEl.id, project);
+    }
   }
 }
 
@@ -187,6 +207,9 @@ class ProjectInput extends Component<HTMLDivElement, HTMLFormElement>{
     this.peopleInputEl = this.element.querySelector('#people')!;
 
     this.configure();
+  }
+
+  renderContent() {
   }
 
   configure() {
