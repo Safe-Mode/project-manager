@@ -1,5 +1,5 @@
-import { State } from "./state.js";
-import { Project, ProjectStatus } from "../models/project.js";
+import { State } from "./state";
+import { Project, ProjectStatus } from "../models/project";
 
 export class ProjectState extends State<Project> {
   private static instance: ProjectState;

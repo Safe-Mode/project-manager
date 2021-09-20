@@ -1,4 +1,4 @@
-import { ValidationConfig } from "./validation-config";
+import { ValidationConfig } from "../validation-config";
 
 export const validate = ({ value, required, minLength, maxLength, min, max }: ValidationConfig): boolean => {
   let isValid = true;
